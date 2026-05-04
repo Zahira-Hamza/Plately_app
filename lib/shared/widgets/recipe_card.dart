@@ -19,7 +19,6 @@ class RecipeCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onBookmarkTap;
 
-  // Warm placeholder backgrounds cycling by recipe id
   static const _placeholderColors = [
     Color(0xFFFFE8D6),
     Color(0xFFFFD4B8),
@@ -41,24 +40,31 @@ class RecipeCard extends StatelessWidget {
         HapticFeedback.lightImpact();
         onTap();
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardSurface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x12000000),
-              blurRadius: 16,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildImage(),
-            _buildInfo(),
-          ],
+      child: ClipRRect(
+        // ClipRRect here prevents content from bleeding outside the card
+        // bounds — this is what caused the 21px vertical overflow.
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardSurface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x12000000),
+                blurRadius: 16,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          // Column must not expand beyond available height.
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // ← fix: don't force max height
+            children: [
+              _buildImage(),
+              _buildInfo(),
+            ],
+          ),
         ),
       )
           .animate()
@@ -70,51 +76,47 @@ class RecipeCard extends StatelessWidget {
   // ── Image ──────────────────────────────────────────────────────────────────
 
   Widget _buildImage() {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      child: Stack(
-        children: [
-          SizedBox(
-            height: 120,
-            width: double.infinity,
-            child: recipe.image.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: recipe.image,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => _imagePlaceholder(),
-                    errorWidget: (_, __, ___) => _imagePlaceholder(),
-                    fadeInDuration: const Duration(milliseconds: 300),
-                  )
-                : _imagePlaceholder(),
-          ),
-          // Difficulty badge
+    return Stack(
+      children: [
+        SizedBox(
+          height: 120,
+          width: double.infinity,
+          child: recipe.image.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: recipe.image,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => _imagePlaceholder(),
+                  errorWidget: (_, __, ___) => _imagePlaceholder(),
+                  fadeInDuration: const Duration(milliseconds: 300),
+                )
+              : _imagePlaceholder(),
+        ),
+        Positioned(
+          bottom: 8,
+          left: 8,
+          child: _DifficultyBadge(minutes: recipe.readyInMinutes),
+        ),
+        if (onBookmarkTap != null)
           Positioned(
-            bottom: 8,
-            left: 8,
-            child: _DifficultyBadge(minutes: recipe.readyInMinutes),
-          ),
-          // Bookmark button
-          if (onBookmarkTap != null)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: _BookmarkButton(
-                isSaved: recipe.isSaved,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  onBookmarkTap!();
-                },
-              ),
+            top: 8,
+            right: 8,
+            child: _BookmarkButton(
+              isSaved: recipe.isSaved,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onBookmarkTap!();
+              },
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
   Widget _imagePlaceholder() => Container(
         color: _placeholderColor,
         child: Center(
-          child: Text(_placeholderEmoji, style: const TextStyle(fontSize: 40)),
+          child:
+              Text(_placeholderEmoji, style: const TextStyle(fontSize: 40)),
         ),
       );
 
@@ -122,9 +124,10 @@ class RecipeCard extends StatelessWidget {
 
   Widget _buildInfo() {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             recipe.title,
@@ -133,12 +136,20 @@ class RecipeCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
+          // Row fix: wrap chips in Flexible so they don't exceed card width.
           Row(
             children: [
-              _InfoChip(icon: '⏱', value: '${recipe.readyInMinutes} min'),
-              const SizedBox(width: 8),
+              Flexible(
+                child: _InfoChip(
+                    icon: '⏱', value: '${recipe.readyInMinutes} min'),
+              ),
+              const SizedBox(width: 6),
               if (recipe.calories > 0)
-                _InfoChip(icon: '🔥', value: '${recipe.calories.toInt()} kcal'),
+                Flexible(
+                  child: _InfoChip(
+                      icon: '🔥',
+                      value: '${recipe.calories.toInt()} kcal'),
+                ),
             ],
           ),
         ],
@@ -213,8 +224,8 @@ class _DifficultyBadge extends StatelessWidget {
         color: _bg,
         borderRadius: BorderRadius.circular(999),
       ),
-      child:
-          Text(_label, style: AppTypography.labelSmall.copyWith(color: _text)),
+      child: Text(_label,
+          style: AppTypography.labelSmall.copyWith(color: _text)),
     );
   }
 }
@@ -229,11 +240,17 @@ class _InfoChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(icon, style: const TextStyle(fontSize: 12)),
+        Text(icon, style: const TextStyle(fontSize: 11)),
         const SizedBox(width: 3),
-        Text(value,
+        Flexible(
+          child: Text(
+            value,
             style: AppTypography.statsStyle
-                .copyWith(color: AppColors.textSecondary)),
+                .copyWith(color: AppColors.textSecondary, fontSize: 11),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
       ],
     );
   }

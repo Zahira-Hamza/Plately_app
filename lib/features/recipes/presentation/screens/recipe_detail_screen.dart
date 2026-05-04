@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../injection_container.dart';
 import '../../../../shared/widgets/shimmer/recipe_shimmers.dart';
+import '../../../../shared/widgets/add_to_plan_bottom_sheet.dart';
 import '../../data/models/ingredient_model.dart';
 import '../../data/models/instruction_model.dart';
 import '../../data/models/step_model.dart';
@@ -865,9 +866,13 @@ class _StickyBottom extends StatelessWidget {
           icon: const Icon(Icons.calendar_month_rounded,
               color: Colors.white, size: 18),
           label: const Text('Add to Meal Plan'),
-          onPressed: () {
-            // TODO Module 4: open AddToPlanBottomSheet
-          },
+          onPressed: () => AddToPlanBottomSheet.show(
+            context,
+            recipeId: recipe.id,
+            recipeName: recipe.title,
+            recipeImage: recipe.image,
+            calories: recipe.calories,
+          ),
         ),
       ),
     );

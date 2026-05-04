@@ -38,7 +38,9 @@ Widget _shimmerWrap({required Widget child}) => Shimmer.fromColors(
     );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Recipe card shimmer (matches RecipeCard layout exactly)
+// Recipe card shimmer
+// The overflow was caused by the inner Column having no size constraint —
+// ClipRect + overflow hidden stops the 6px bleed.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ShimmerRecipeCard extends StatelessWidget {
@@ -47,33 +49,35 @@ class ShimmerRecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmerWrap(
-      child: Container(
-        decoration: BoxDecoration(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
           color: AppColors.cardSurface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image placeholder
-            _ShimmerBox(
-              width: double.infinity,
-              height: 120,
-              borderRadius: 16,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ShimmerBox(
-                      width: double.infinity, height: 16, borderRadius: 4),
-                  const SizedBox(height: 6),
-                  _ShimmerBox(width: 100, height: 12, borderRadius: 4),
-                ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,  // ← key fix: don't expand beyond content
+            children: [
+              // Image area
+              _ShimmerBox(
+                width: double.infinity,
+                height: 120,
+                borderRadius: 0, // ClipRRect handles corner radius
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ShimmerBox(
+                        width: double.infinity, height: 16, borderRadius: 4),
+                    const SizedBox(height: 6),
+                    _ShimmerBox(width: 100, height: 12, borderRadius: 4),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -108,7 +112,41 @@ class ShimmerRecipeGrid extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Recipe list item shimmer (for ingredient search results)
+// Hero card shimmer
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ShimmerHeroCard extends StatelessWidget {
+  const ShimmerHeroCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _shimmerWrap(
+      child: _ShimmerBox(
+        width: double.infinity,
+        height: 200,
+        borderRadius: 16,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Day card shimmer
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ShimmerDayCard extends StatelessWidget {
+  const ShimmerDayCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _shimmerWrap(
+      child: _ShimmerBox(width: 88, height: 110, borderRadius: 16),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recipe list item shimmer
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ShimmerRecipeListItem extends StatelessWidget {
@@ -131,6 +169,7 @@ class ShimmerRecipeListItem extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _ShimmerBox(
                       width: double.infinity, height: 16, borderRadius: 4),
@@ -147,7 +186,7 @@ class ShimmerRecipeListItem extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Recipe detail shimmer (full screen skeleton)
+// Recipe detail shimmer
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ShimmerRecipeDetail extends StatelessWidget {
@@ -160,20 +199,17 @@ class ShimmerRecipeDetail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero image
             _ShimmerBox(width: double.infinity, height: 280, borderRadius: 0),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
                   _ShimmerBox(
                       width: double.infinity, height: 28, borderRadius: 6),
                   const SizedBox(height: 8),
                   _ShimmerBox(width: 180, height: 18, borderRadius: 6),
                   const SizedBox(height: 20),
-                  // Info chips row
                   Row(
                     children: List.generate(
                       4,
@@ -185,7 +221,6 @@ class ShimmerRecipeDetail extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Macro cards
                   Row(
                     children: List.generate(
                       4,
@@ -201,7 +236,6 @@ class ShimmerRecipeDetail extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Tab bar
                   Row(
                     children: List.generate(
                       3,
@@ -215,7 +249,6 @@ class ShimmerRecipeDetail extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Ingredient rows
                   ...List.generate(
                     5,
                     (_) => Padding(

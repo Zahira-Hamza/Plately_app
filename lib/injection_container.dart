@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -8,7 +9,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/constants/app_constants.dart';
 import 'core/network/dio_client.dart';
 import 'core/theme/theme_cubit.dart';
-// ── Module 2 imports ──────────────────────────────────────────────────────────
+// ── Module 4 ──────────────────────────────────────────────────────────────────
+import 'features/home/presentation/cubit/home_cubit.dart';
+import 'features/home/presentation/screens/home_screen.dart';
+import 'features/meal_plan/data/datasources/grok_datasource.dart';
+import 'features/meal_plan/data/datasources/meal_plan_local_datasource.dart';
+import 'features/meal_plan/data/repositories/meal_plan_repository_impl.dart';
+import 'features/meal_plan/domain/repositories/meal_plan_repository.dart';
+import 'features/meal_plan/domain/usecases/meal_plan_usecases.dart';
+import 'features/meal_plan/presentation/cubit/meal_plan_cubit.dart';
+import 'features/meal_plan/presentation/screens/ai_meal_plan_generation_screen.dart';
+import 'features/meal_plan/presentation/screens/meal_plan_screen.dart';
+// ── Module 2 ──────────────────────────────────────────────────────────────────
 import 'features/onboarding/data/local_datasource.dart';
 import 'features/onboarding/domain/usecases/check_onboarding_status.dart';
 import 'features/onboarding/domain/usecases/complete_onboarding.dart';
@@ -16,7 +28,7 @@ import 'features/onboarding/presentation/cubit/onboarding_cubit.dart';
 import 'features/onboarding/presentation/screens/dietary_preferences_screen.dart';
 import 'features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'features/onboarding/presentation/screens/splash_screen.dart';
-// ── Module 3 imports ──────────────────────────────────────────────────────────
+// ── Module 3 ──────────────────────────────────────────────────────────────────
 import 'features/recipes/data/datasources/recipe_local_datasource.dart';
 import 'features/recipes/data/datasources/recipe_remote_datasource.dart';
 import 'features/recipes/data/repositories/recipe_repository_impl.dart';
@@ -30,17 +42,15 @@ import 'features/recipes/presentation/screens/search_screen.dart';
 
 final GetIt sl = GetIt.instance;
 
-/// Initialises and registers all dependencies.
-/// Call `await init()` from [main] before [runApp].
 Future<void> init() async {
-  // ── External: SharedPreferences ───────────────────────────────────────────
+  // ── SharedPreferences ─────────────────────────────────────────────────────
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerSingleton<SharedPreferences>(sharedPreferences);
 
-  // ── External: Dio ─────────────────────────────────────────────────────────
+  // ── Dio ───────────────────────────────────────────────────────────────────
   sl.registerSingleton<Dio>(DioClient.create());
 
-  // ── External: Hive Boxes ──────────────────────────────────────────────────
+  // ── Hive boxes ────────────────────────────────────────────────────────────
   sl.registerSingleton<Box>(
     Hive.box(AppConstants.hiveRecipesBox),
     instanceName: AppConstants.hiveRecipesBox,
@@ -54,21 +64,17 @@ Future<void> init() async {
     instanceName: AppConstants.hiveCacheBox,
   );
 
-  // ── Core: ThemeCubit ──────────────────────────────────────────────────────
+  // ── ThemeCubit ────────────────────────────────────────────────────────────
   sl.registerLazySingleton<ThemeCubit>(
-    () => ThemeCubit(sl<SharedPreferences>()),
-  );
+      () => ThemeCubit(sl<SharedPreferences>()));
 
   // ── Module 2: Onboarding ──────────────────────────────────────────────────
   sl.registerLazySingleton<OnboardingLocalDatasource>(
-    () => OnboardingLocalDatasource(sl<SharedPreferences>()),
-  );
+      () => OnboardingLocalDatasource(sl<SharedPreferences>()));
   sl.registerFactory<CheckOnboardingStatus>(
-    () => CheckOnboardingStatus(sl<OnboardingLocalDatasource>()),
-  );
+      () => CheckOnboardingStatus(sl<OnboardingLocalDatasource>()));
   sl.registerFactory<CompleteOnboarding>(
-    () => CompleteOnboarding(sl<OnboardingLocalDatasource>()),
-  );
+      () => CompleteOnboarding(sl<OnboardingLocalDatasource>()));
   sl.registerFactory<OnboardingCubit>(
     () => OnboardingCubit(
       checkOnboardingStatus: sl<CheckOnboardingStatus>(),
@@ -77,14 +83,11 @@ Future<void> init() async {
   );
 
   // ── Module 3: Recipes ─────────────────────────────────────────────────────
-
   sl.registerLazySingleton<RecipeRemoteDatasource>(
-    () => RecipeRemoteDatasource(sl<Dio>()),
-  );
+      () => RecipeRemoteDatasource(sl<Dio>()));
   sl.registerLazySingleton<RecipeLocalDatasource>(
-    () => RecipeLocalDatasource(
-      sl<Box>(instanceName: AppConstants.hiveCacheBox),
-    ),
+    () =>
+        RecipeLocalDatasource(sl<Box>(instanceName: AppConstants.hiveCacheBox)),
   );
   sl.registerLazySingleton<RecipeRepository>(
     () => RecipeRepositoryImpl(
@@ -93,17 +96,13 @@ Future<void> init() async {
     ),
   );
   sl.registerFactory<SearchRecipes>(
-    () => SearchRecipes(sl<RecipeRepository>()),
-  );
+      () => SearchRecipes(sl<RecipeRepository>()));
   sl.registerFactory<GetRecipeDetail>(
-    () => GetRecipeDetail(sl<RecipeRepository>()),
-  );
+      () => GetRecipeDetail(sl<RecipeRepository>()));
   sl.registerFactory<SearchByIngredients>(
-    () => SearchByIngredients(sl<RecipeRepository>()),
-  );
+      () => SearchByIngredients(sl<RecipeRepository>()));
   sl.registerFactory<GetRandomRecipe>(
-    () => GetRandomRecipe(sl<RecipeRepository>()),
-  );
+      () => GetRandomRecipe(sl<RecipeRepository>()));
   sl.registerFactory<RecipeSearchCubit>(
     () => RecipeSearchCubit(
       searchRecipes: sl<SearchRecipes>(),
@@ -117,11 +116,49 @@ Future<void> init() async {
     ),
   );
 
-  // TODO Module 4: Register meal plan datasources and repositories
+  // ── Module 4: Meal Plan ───────────────────────────────────────────────────
+  sl.registerLazySingleton<MealPlanLocalDatasource>(
+    () => MealPlanLocalDatasource(
+        sl<Box>(instanceName: AppConstants.hiveMealPlanBox)),
+  );
+  sl.registerLazySingleton<GrokDatasource>(() => GrokDatasource(sl<Dio>()));
+  sl.registerLazySingleton<MealPlanRepository>(
+    () => MealPlanRepositoryImpl(
+      local: sl<MealPlanLocalDatasource>(),
+      grok: sl<GrokDatasource>(),
+    ),
+  );
+  sl.registerFactory<GetWeekPlan>(() => GetWeekPlan(sl<MealPlanRepository>()));
+  sl.registerFactory<AddMealToDay>(
+      () => AddMealToDay(sl<MealPlanRepository>()));
+  sl.registerFactory<RemoveMealFromDay>(
+      () => RemoveMealFromDay(sl<MealPlanRepository>()));
+  sl.registerFactory<GenerateAIPlan>(
+      () => GenerateAIPlan(sl<MealPlanRepository>()));
+  sl.registerFactory<MealPlanCubit>(
+    () => MealPlanCubit(
+      getWeekPlan: sl<GetWeekPlan>(),
+      addMealToDay: sl<AddMealToDay>(),
+      removeMealFromDay: sl<RemoveMealFromDay>(),
+      generateAIPlan: sl<GenerateAIPlan>(),
+      prefs: sl<SharedPreferences>(),
+    ),
+  );
+
+  // ── Module 4: Home ────────────────────────────────────────────────────────
+  sl.registerFactory<HomeCubit>(
+    () => HomeCubit(
+      getRandomRecipe: sl<GetRandomRecipe>(),
+      searchRecipes: sl<SearchRecipes>(),
+      prefs: sl<SharedPreferences>(),
+      mealPlanDatasource: sl<MealPlanLocalDatasource>(),
+    ),
+  );
+
   // TODO Module 5: Register saved datasources
   // TODO Module 6: Register profile datasources
 
-  // ── Navigation: GoRouter ──────────────────────────────────────────────────
+  // ── Router ────────────────────────────────────────────────────────────────
   sl.registerSingleton<GoRouter>(_buildRouter());
 }
 
@@ -132,30 +169,23 @@ Future<void> init() async {
 GoRouter _buildRouter() => GoRouter(
       initialLocation: '/splash',
       routes: [
+        GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
         GoRoute(
-          path: '/splash',
-          builder: (_, __) => const SplashScreen(),
-        ),
-        GoRoute(
-          path: '/onboarding',
-          builder: (_, __) => const OnboardingScreen(),
-        ),
+            path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
         GoRoute(
           path: '/preferences',
-          builder: (_, state) {
-            final editMode = state.uri.queryParameters['editMode'] == 'true';
-            return DietaryPreferencesScreen(editMode: editMode);
-          },
+          builder: (_, state) => DietaryPreferencesScreen(
+            editMode: state.uri.queryParameters['editMode'] == 'true',
+          ),
         ),
 
-        // ── Shell (bottom nav) ───────────────────────────────────────────
+        // ── Shell ────────────────────────────────────────────────────────
         ShellRoute(
           builder: (context, state, child) => _ShellScaffold(child: child),
           routes: [
             GoRoute(
               path: '/home',
-              // TODO Module 4: replace with HomeScreen
-              builder: (_, __) => const _PlaceholderTab('Home'),
+              builder: (_, __) => const HomeScreen(),
             ),
             GoRoute(
               path: '/home/search',
@@ -163,17 +193,16 @@ GoRouter _buildRouter() => GoRouter(
             ),
             GoRoute(
               path: '/home/plan',
-              // TODO Module 4: replace with MealPlanScreen
-              builder: (_, __) => const _PlaceholderTab('Meal Plan'),
+              builder: (_, __) => const MealPlanScreen(),
             ),
             GoRoute(
               path: '/home/saved',
-              // TODO Module 5: replace with SavedScreen
+              // TODO Module 5
               builder: (_, __) => const _PlaceholderTab('Saved'),
             ),
             GoRoute(
               path: '/home/profile',
-              // TODO Module 5: replace with ProfileScreen
+              // TODO Module 5
               builder: (_, __) => const _PlaceholderTab('Profile'),
             ),
           ],
@@ -181,10 +210,9 @@ GoRouter _buildRouter() => GoRouter(
 
         GoRoute(
           path: '/recipe/:id',
-          builder: (_, state) {
-            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
-            return RecipeDetailScreen(recipeId: id);
-          },
+          builder: (_, state) => RecipeDetailScreen(
+            recipeId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+          ),
         ),
         GoRoute(
           path: '/ingredients',
@@ -192,8 +220,7 @@ GoRouter _buildRouter() => GoRouter(
         ),
         GoRoute(
           path: '/generate',
-          // TODO Module 4: replace with AIMealPlanGenerationScreen
-          builder: (_, __) => const _PlaceholderTab('AI Generation — Module 4'),
+          builder: (_, __) => const AIMealPlanGenerationScreen(),
         ),
       ],
     );
@@ -223,9 +250,9 @@ class _ShellScaffold extends StatelessWidget {
   static const _labels = ['Home', 'Search', 'Plan', 'Saved', 'Profile'];
 
   int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
+    final loc = GoRouterState.of(context).uri.path;
     for (int i = _tabs.length - 1; i >= 0; i--) {
-      if (location.startsWith(_tabs[i])) return i;
+      if (loc.startsWith(_tabs[i])) return i;
     }
     return 0;
   }
@@ -248,28 +275,27 @@ class _ShellScaffold extends StatelessWidget {
               children: List.generate(_tabs.length, (i) {
                 final isActive = i == current;
                 return GestureDetector(
-                  onTap: () => context.go(_tabs[i]),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.go(_tabs[i]);
+                  },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        _icons[i],
-                        size: 24,
-                        color: isActive
-                            ? const Color(0xFFA63500)
-                            : const Color(0xFF8D7168),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _labels[i],
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      Icon(_icons[i],
+                          size: 24,
                           color: isActive
                               ? const Color(0xFFA63500)
-                              : const Color(0xFF8D7168),
-                        ),
-                      ),
+                              : const Color(0xFF8D7168)),
+                      const SizedBox(height: 2),
+                      Text(_labels[i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isActive
+                                ? const Color(0xFFA63500)
+                                : const Color(0xFF8D7168),
+                          )),
                     ],
                   ),
                 );
@@ -282,24 +308,16 @@ class _ShellScaffold extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Placeholder tab
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _PlaceholderTab extends StatelessWidget {
   const _PlaceholderTab(this.name);
   final String name;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text(
-          '$name\n(Coming in the next module)',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 18),
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(
+          child: Text('$name\n(Coming in Module 5)',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18)),
         ),
-      ),
-    );
-  }
+      );
 }

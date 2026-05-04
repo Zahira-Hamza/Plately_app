@@ -10,20 +10,44 @@ import '../../../../shared/widgets/recipe_card.dart';
 import '../../../../shared/widgets/shimmer/recipe_shimmers.dart';
 import '../cubits/recipe_search_cubit.dart';
 
-class SearchScreen extends StatefulWidget {
+/// SearchScreen owns its [RecipeSearchCubit] via [BlocProvider].
+///
+/// The fix for ProviderNotFoundException: the [StatefulWidget] splits into
+/// an outer shell that provides the cubit, and an inner [_SearchBody] that
+/// reads it — so every `context.read<RecipeSearchCubit>()` call is always
+/// made from a context that is a descendant of the [BlocProvider].
+class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<RecipeSearchCubit>(),
+      child: const _SearchBody(),
+    );
+  }
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+// ─────────────────────────────────────────────────────────────────────────────
+// Inner stateful widget — context is always below BlocProvider
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SearchBody extends StatefulWidget {
+  const _SearchBody();
+
+  @override
+  State<_SearchBody> createState() => _SearchBodyState();
+}
+
+class _SearchBodyState extends State<_SearchBody> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   String? _activeFilter;
 
   static const _filters = ['All', 'Quick <30min', 'Healthy', 'Vegetarian'];
-  static const _popularSearches = ['Pasta 🍝', 'Chicken 🍗', 'Salad 🥗', 'Soup 🥣'];
+  static const _popularSearches = [
+    'Pasta 🍝', 'Chicken 🍗', 'Salad 🥗', 'Soup 🥣'
+  ];
   static const _prefsKey = 'recent_searches';
 
   List<String> _recentSearches = [];
@@ -36,6 +60,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _recentSearches = prefs.getStringList(_prefsKey) ?? [];
     });
@@ -49,6 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ..._recentSearches.where((s) => s != query),
     ].take(5).toList();
     await prefs.setStringList(_prefsKey, updated);
+    if (!mounted) return;
     setState(() => _recentSearches = updated);
   }
 
@@ -56,8 +82,11 @@ class _SearchScreenState extends State<SearchScreen> {
     final prefs = await SharedPreferences.getInstance();
     final updated = _recentSearches.where((s) => s != query).toList();
     await prefs.setStringList(_prefsKey, updated);
+    if (!mounted) return;
     setState(() => _recentSearches = updated);
   }
+
+  // ── All cubit reads use THIS context — safely below BlocProvider ──────────
 
   void _onSearchChanged(String value) {
     context.read<RecipeSearchCubit>().search(
@@ -92,21 +121,18 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<RecipeSearchCubit>(),
-      child: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                _buildFilterChips(),
-                Expanded(child: _buildBody()),
-              ],
-            ),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              _buildFilterChips(),
+              Expanded(child: _buildBody()),
+            ],
           ),
         ),
       ),
@@ -190,8 +216,9 @@ class _SearchScreenState extends State<SearchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_recentSearches.isNotEmpty) ...[
-            Text('Recent Searches', style: AppTypography.labelMedium
-                .copyWith(color: AppColors.textSecondary)),
+            Text('Recent Searches',
+                style: AppTypography.labelMedium
+                    .copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -209,8 +236,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 24),
           ],
-          Text('Popular Searches', style: AppTypography.labelMedium
-              .copyWith(color: AppColors.textSecondary)),
+          Text('Popular Searches',
+              style: AppTypography.labelMedium
+                  .copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -331,7 +359,7 @@ class _SearchScreenState extends State<SearchScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Private sub-widgets
+// Sub-widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SearchBar extends StatelessWidget {
@@ -356,8 +384,8 @@ class _SearchBar extends StatelessWidget {
       style: AppTypography.bodyMedium,
       decoration: InputDecoration(
         hintText: AppStrings.searchHint,
-        hintStyle: AppTypography.bodyMedium
-            .copyWith(color: AppColors.outline),
+        hintStyle:
+            AppTypography.bodyMedium.copyWith(color: AppColors.outline),
         prefixIcon: const Icon(Icons.search_rounded,
             color: AppColors.outline, size: 20),
         suffixIcon: ValueListenableBuilder(
@@ -397,9 +425,7 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary : AppColors.cardSurface,
           borderRadius: BorderRadius.circular(12),
-          border: isActive
-              ? null
-              : Border.all(color: AppColors.outlineVariant),
+          border: isActive ? null : Border.all(color: AppColors.outlineVariant),
         ),
         child: Text(
           label,
@@ -471,8 +497,7 @@ class _PopularChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: AppTypography.labelMedium
-              .copyWith(color: AppColors.primary),
+          style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
         ),
       ),
     );

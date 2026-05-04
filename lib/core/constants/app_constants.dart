@@ -1,21 +1,33 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Global application constants.
+///
+/// API keys are loaded from the `.env` file at runtime via [flutter_dotenv].
+/// Never hardcode keys here.
 abstract final class AppConstants {
-  // ── API Endpoints ───────────────────────────────────────────────────────
+  // ── API Endpoints ────────────────────────────────────────────────────────
+
   static const String spoonacularBaseUrl = 'https://api.spoonacular.com';
-  static const String geminiBaseUrl =
-      'https://generativelanguage.googleapis.com/v1beta';
 
-  // ── API Keys (replace before shipping) ──────────────────────────────────
-  // TODO: replace with real keys via dart-define or env file
-  static const String spoonacularApiKey = 'YOUR_SPOONACULAR_KEY';
-  static const String geminiApiKey = 'YOUR_GEMINI_KEY';
+  static const String grokBaseUrl = 'https://api.groq.com/openai/v1';
 
-  // ── Hive Box Names ──────────────────────────────────────────────────────
+  // ── API Keys (loaded from .env at runtime) ───────────────────────────────
+
+  /// Spoonacular key — set SPOONACULAR_API_KEY in .env
+  static String get spoonacularApiKey =>
+      dotenv.env['SPOONACULAR_API_KEY'] ?? '';
+
+  /// xAI Grok key — set GROK_API_KEY in .env
+  static String get grokApiKey => dotenv.env['GROK_API_KEY'] ?? '';
+
+  // ── Hive Box Names ───────────────────────────────────────────────────────
+
   static const String hiveRecipesBox = 'saved_recipes';
   static const String hiveMealPlanBox = 'meal_plans';
   static const String hiveCacheBox = 'recipe_cache';
 
-  // ── SharedPreferences Keys ──────────────────────────────────────────────
+  // ── SharedPreferences Keys ───────────────────────────────────────────────
+
   static const String prefOnboardingDone = 'onboarding_complete';
   static const String prefUserName = 'user_name';
   static const String prefDietaryPrefs = 'dietary_preferences';
