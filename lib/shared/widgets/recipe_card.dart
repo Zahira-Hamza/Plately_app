@@ -41,8 +41,6 @@ class RecipeCard extends StatelessWidget {
         onTap();
       },
       child: ClipRRect(
-        // ClipRRect here prevents content from bleeding outside the card
-        // bounds — this is what caused the 21px vertical overflow.
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
@@ -56,12 +54,17 @@ class RecipeCard extends StatelessWidget {
               ),
             ],
           ),
-          // Column must not expand beyond available height.
+          // ROOT FIX: Column must be mainAxisSize.max so Expanded works,
+          // and the image uses Expanded to fill whatever space remains after
+          // the info section takes its fixed height.
+          // This means the card always fits its parent height exactly — no overflow.
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // ← fix: don't force max height
+            mainAxisSize: MainAxisSize.max,
             children: [
-              _buildImage(),
+              // Image takes all remaining height after info section
+              Expanded(child: _buildImage()),
+              // Info section has a fixed natural height (~76px)
               _buildInfo(),
             ],
           ),
@@ -77,20 +80,17 @@ class RecipeCard extends StatelessWidget {
 
   Widget _buildImage() {
     return Stack(
+      fit: StackFit.expand,
       children: [
-        SizedBox(
-          height: 120,
-          width: double.infinity,
-          child: recipe.image.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: recipe.image,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => _imagePlaceholder(),
-                  errorWidget: (_, __, ___) => _imagePlaceholder(),
-                  fadeInDuration: const Duration(milliseconds: 300),
-                )
-              : _imagePlaceholder(),
-        ),
+        recipe.image.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: recipe.image,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _imagePlaceholder(),
+                errorWidget: (_, __, ___) => _imagePlaceholder(),
+                fadeInDuration: const Duration(milliseconds: 300),
+              )
+            : _imagePlaceholder(),
         Positioned(
           bottom: 8,
           left: 8,
@@ -115,8 +115,7 @@ class RecipeCard extends StatelessWidget {
   Widget _imagePlaceholder() => Container(
         color: _placeholderColor,
         child: Center(
-          child:
-              Text(_placeholderEmoji, style: const TextStyle(fontSize: 40)),
+          child: Text(_placeholderEmoji, style: const TextStyle(fontSize: 40)),
         ),
       );
 
@@ -135,20 +134,18 @@ class RecipeCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
-          // Row fix: wrap chips in Flexible so they don't exceed card width.
+          const SizedBox(height: 4),
           Row(
             children: [
               Flexible(
-                child: _InfoChip(
-                    icon: '⏱', value: '${recipe.readyInMinutes} min'),
+                child:
+                    _InfoChip(icon: '⏱', value: '${recipe.readyInMinutes} min'),
               ),
               const SizedBox(width: 6),
               if (recipe.calories > 0)
                 Flexible(
                   child: _InfoChip(
-                      icon: '🔥',
-                      value: '${recipe.calories.toInt()} kcal'),
+                      icon: '🔥', value: '${recipe.calories.toInt()} kcal'),
                 ),
             ],
           ),
@@ -224,8 +221,8 @@ class _DifficultyBadge extends StatelessWidget {
         color: _bg,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(_label,
-          style: AppTypography.labelSmall.copyWith(color: _text)),
+      child:
+          Text(_label, style: AppTypography.labelSmall.copyWith(color: _text)),
     );
   }
 }

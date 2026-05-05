@@ -71,7 +71,7 @@ class GrokDatasource {
 
     try {
       final response = await _dio.post(
-        '${AppConstants.grokApiKey}/chat/completions',
+        '${AppConstants.grokBaseUrl}/chat/completions',
         options: Options(
           headers: {
             'Authorization': 'Bearer $key',
